@@ -80,4 +80,4 @@ def updateLocation():
   return "Cập nhật thành công", 200
 
 if __name__ == "__main__":
-  app.run(debug=True, host="0.0.0.0", port=95)
+  app.run(debug=True, host="0.0.0.0", port=86)
