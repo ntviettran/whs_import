@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vị trí kho</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="container">
+    <div class="mt-1">
+      <div style="font-size: 24px; font-weight: bold;">Các chức năng</div>
+      <div class="mr-2 flex mt-1">
+        <input type="radio" name="function" value="0" class="mr-1" checked id="fabric-pallet">
+        <label for="fabric-pallet">Cuộn vải vào Pallet/Trolley</label>
+      </div>
+      <div class="flex mt-1">
+        <input type="radio" name="function" value="1" class="mr-1" id="fabric-destination">
+        <label for="fabric-destination">Cuộn vải vào Rack/Vị trí</label>
+      </div>
+      <div class="flex mt-1">
+        <input type="radio" name="function" value="2" class="mr-1" id="pallet-destination">
+        <label for="fabric-destination">Pallet/Trolley vào Rack/Vị Trí</label>
+      </div>
+    </div>
+    <input id="qrInput" onkeydown="handleKeyDown(event)" type="text" class="mt-1" placeholder="Quét/Nhập vị trí trước, rồi quét cuộn vải">
+    <div id="locationId" class="location mt-1 hidden">Vị trí</div>
+    <div id="infoId" class="flex justify-between info mt-1 hidden">
+      <span>Pallet: PL001</span>
+      <span>ID cuộn vải: 123</span>
+    </div>
+    <div id="errorText" class="error mt-1 hidden"></div>
+    <div id="statusId" class="status mt-1 hidden">OK</div>
+  </div>
+</body>
+<script>
+  let locationVariable = null
+  const locationElm = document.querySelector("#locationId")
+  const infoElm = document.querySelector("#infoId")
+  const leftInfoElm = infoElm.querySelector("span:first-child")
+  const rightInfoElm = infoElm.querySelector("span:last-child")
+  const errorText = document.querySelector("#errorText")
+  const statusElm = document.querySelector("#statusId")
+
+  const PALLET = ["FBS", "TRL"]
+  const LOCATION = ["T", "R"]
+
+  function checkStatus(qr) {
+    const functionRadio = document.querySelector('input[name="function"]:checked');
+    if ((functionRadio.value === "0" || functionRadio.value === "2") && PALLET.some(p => qr.slice(0, 3).includes(p))) return "pallet"
+    if (functionRadio.value !== "0" && LOCATION.some(p => qr[0] == p)) return "location"
+    
+    if (!isNaN(parseInt(qr))) return "fabric"
+    return "wrong"
+  }
+
+  function handleOnOffErrorText(text) {
+    errorText.innerHTML = text
+    errorText.classList.remove("hidden")
+    errorText.classList.add("show-block")
+  }
+
+  function handleOnOffStatus(text, status) {
+    statusElm.innerHTML = text
+    statusElm.classList.remove("hidden")
+    statusElm.classList.remove(status === "error" ? "success" : "error")
+    statusElm.classList.add("show-block", status)
+  }
+
+  function handleOnOffInfo(leftText, rightText) {
+    const functionRadio = document.querySelector('input[name="function"]:checked');
+    if (functionRadio.value === "0") {
+      leftText = "Pallet/Trolley: " + leftText
+    } else {
+      leftText = "Rack/Vị trí: " + leftText
+    }
+
+    leftInfoElm.innerHTML = leftText
+    rightInfoElm.innerHTML = "ID: " + rightText
+    infoElm.classList.remove("hidden")
+    infoElm.classList.add("show-flex")
+  }
+
+  function handleKeyDown(e) {
+    const qrInput = e.target
+    if (e.key === "Enter") {
+      const value = qrInput.value
+      const check = checkStatus(value)
+      const functionRadio = document.querySelector('input[name="function"]:checked');
+
+      if (check === "wrong") {
+        locationElm.classList.add("hidden")
+        locationElm.classList.remove("show-block")
+        infoElm.classList.add("hidden")
+        infoElm.classList.remove("show-flex")
+
+        handleOnOffErrorText("QR bạn nhập không đúng định dạng.")
+        handleOnOffStatus("Lỗi", "error")
+        const audio = new Audio('{{ url_for("static", filename="sound/error.wav") }}');
+        audio.play().catch(error => console.error("Error playing the audio file:", error));
+        return
+      }
+
+      if (!locationVariable && check === "fabric") {
+        let erorrText = ""
+        if (functionRadio.value === "0") {
+          erorrText = "Pallet/Trolley: "
+        } else {
+          erorrText = "Rack/Vị trí: " 
+        }
+        handleOnOffErrorText(`${errorText} không đúng định dạng`)
+        handleOnOffStatus("Lỗi", "error")
+        const audio = new Audio('{{ url_for("static", filename="sound/error.wav") }}');
+        audio.play().catch(error => console.error("Error playing the audio file:", error));
+        return
+      }
+
+      errorText.classList.remove("show-block")
+      errorText.classList.add("hidden")
+      statusElm.classList.remove("show-block")
+      statusElm.classList.add("hidden")
+
+      if ((check === "location" && functionRadio.value !== "0") || (check === "pallet" && functionRadio.value === "0")) {
+        locationVariable = value;
+        locationElm.innerHTML = value
+        locationElm.classList.remove("hidden")
+        locationElm.classList.add("show-block")
+        infoElm.classList.add("hidden")
+        infoElm.classList.remove("show-flex")
+        statusElm.classList.add("hidden")
+        statusElm.classList.remove("show-block")
+        qrInput.value = ""
+      } 
+      else {
+        try {
+          fetch("/updateLocation", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({id: value, location: locationVariable, function: functionRadio.value})
+          }).then(res => {
+            if (res.status === 404 || res.status === 422) {
+              res.text().then(errorMessage => {
+                handleOnOffErrorText(errorMessage)
+                handleOnOffStatus("Lỗi", "error")
+                const audio = new Audio('{{ url_for("static", filename="sound/error.wav") }}');
+                audio.play().catch(error => console.error("Error playing the audio file:", error));
+              })
+            }
+            else {
+              handleOnOffInfo(locationVariable, value)
+              handleOnOffStatus("OK", "success")
+              qrInput.value = ""
+              const audio = new Audio('{{ url_for("static", filename="sound/bellding.wav") }}');
+              audio.play().catch(error => console.error("Error playing the audio file:", error));
+            }
+          })
+        } catch {
+          handleOnOffErrorText("Có lỗi từ hệ thống.")
+          handleOnOffStatus("Lỗi", "error")
+        }
+      }
+    } 
+  }
+</script>
+</html>
