@@ -23,7 +23,7 @@
         <label for="fabric-destination">Pallet/Trolley vào Rack/Vị Trí</label>
       </div>
     </div>
-    <input id="qrInput" onkeydown="handleKeyDown(event)" type="text" class="mt-1" placeholder="Quét/Nhập vị trí trước, rồi quét cuộn vải">
+    <input id="qrInput"readonly onfocus="this.removeAttribute('readonly');" onkeydown="handleKeyDown(event)" type="text" class="mt-1" placeholder="Quét/Nhập vị trí trước, rồi quét cuộn vải">
     <div id="locationId" class="location mt-1 hidden">Vị trí</div>
     <div id="infoId" class="flex justify-between info mt-1 hidden">
       <span>Pallet: PL001</span>
