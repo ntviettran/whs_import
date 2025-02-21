@@ -30,7 +30,7 @@
 }
 
 .mt-1 {
-  margin-top: 1rem;
+  margin-top: 0.5rem;
 }
 
 input[type="radio"] {
@@ -45,7 +45,7 @@ input[type="text"] {
 }
 
 .container {
-  padding: 1rem;
+  padding: 0.25rem;
   width: 100%;
 }
 
@@ -56,7 +56,7 @@ input[type="text"] {
 }
 
 .info span {
-  font-size: 24px;
+  font-size: 16px;
 }
 
 .status {
@@ -82,5 +82,9 @@ input[type="text"] {
 
 .show-block {
   display: block;
+}
+
+label {
+  font-size: 16px;
 }
 
